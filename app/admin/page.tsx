@@ -8,17 +8,15 @@ export default async function AdminPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Vérifier que l'utilisateur est admin
-  const { data: profile } = await supabase
+  // Vérifier que l'utilisateur est admin (admin client bypass RLS)
+  const admin = createAdminClient()
+  const { data: profile } = await admin
     .from('profiles')
     .select('is_admin')
     .eq('id', user.id)
     .single()
 
   if (!profile?.is_admin) redirect('/dashboard')
-
-  // Récupérer tous les clients avec leurs stats (admin client bypass RLS)
-  const admin = createAdminClient()
   const { data: clients } = await admin
     .from('profiles')
     .select('*, client_stats(*)')
