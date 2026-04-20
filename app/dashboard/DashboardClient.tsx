@@ -69,18 +69,18 @@ export default function DashboardClient({ profile, stats, monthlyStats }: Props)
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="p-5 border-b" style={{borderColor:'rgba(0,194,255,0.08)'}}>
-        <div className="flex items-center gap-3">
-          <WaveLogo/>
-          <div>
-            <div className="font-display font-bold text-sm leading-tight"
-                 style={{background:'linear-gradient(135deg,#0074D9,#00AAFF)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}}>
-              Market Wave
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <WaveLogo/>
+            <div>
+              <div className="font-display font-bold text-sm leading-tight"
+                   style={{background:'linear-gradient(135deg,#0074D9,#00AAFF)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}}>
+                Market Wave
+              </div>
+              <div className="text-[0.42rem] tracking-[0.25em] uppercase text-[#00E0B8] font-semibold">Agency</div>
             </div>
-            <div className="text-[0.42rem] tracking-[0.25em] uppercase text-[#00E0B8] font-semibold">Agency</div>
           </div>
-        </div>
-        <div className="mt-3 pt-3" style={{borderTop:'1px solid rgba(0,194,255,0.07)'}}>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[#8892A4]">Wave Dashboard</span>
+          <div className="text-[10px] text-[#8892A4] truncate max-w-[110px] text-right">{profile?.email}</div>
         </div>
       </div>
 
@@ -105,8 +105,10 @@ export default function DashboardClient({ profile, stats, monthlyStats }: Props)
           </div>
         </div>
         <button onClick={handleLogout}
-          className="w-full text-left text-xs text-[#8892A4] hover:text-white transition-colors px-3 py-2 rounded-lg hover:bg-white/5">
-          ← Déconnexion
+          className="w-full flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-xl transition-all duration-200 hover:opacity-80"
+          style={{background:'rgba(255,70,70,0.08)',border:'1px solid rgba(255,70,70,0.2)',color:'#ff7070'}}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Déconnexion
         </button>
       </div>
     </div>
