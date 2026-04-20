@@ -23,16 +23,21 @@ export interface ClientStats {
 export interface MonthlyStats {
   id: string
   client_id: string
+  stat_date: string
   month_label: string
   month_order: number
   tiktok_views: number
   instagram_views: number
   followers_gained: number
   google_maps_clicks: number
+  uber_eats_orders: number
   estimated_clients: number
+  new_clients: number
+  custom_message: string
+  created_at: string
 }
 
-// Supabase renvoie les relations en tableau même avec UNIQUE — on prend [0]
 export interface ClientWithStats extends Profile {
   client_stats: ClientStats[] | null
+  monthly_stats?: MonthlyStats[] | null
 }

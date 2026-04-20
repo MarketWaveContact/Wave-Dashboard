@@ -29,9 +29,31 @@ const WaveLogo = () => (
   </svg>
 )
 
+type Period = '7j' | '30j' | '3m' | '6m' | '1an' | 'tout'
+
+const PERIODS: { key: Period; label: string }[] = [
+  { key: '7j',  label: '7 jours' },
+  { key: '30j', label: '30 jours' },
+  { key: '3m',  label: '3 mois' },
+  { key: '6m',  label: '6 mois' },
+  { key: '1an', label: '1 an' },
+  { key: 'tout',label: 'Tout' },
+]
+
+const PERIOD_DAYS: Record<Period, number> = {
+  '7j': 7, '30j': 30, '3m': 90, '6m': 180, '1an': 365, 'tout': 99999,
+}
+
+function filterByPeriod(entries: MonthlyStats[], period: Period): MonthlyStats[] {
+  const cutoff = new Date(Date.now() - PERIOD_DAYS[period] * 86400000)
+  return [...entries]
+    .filter(e => new Date(e.stat_date || e.created_at) >= cutoff)
+    .sort((a, b) => new Date(a.stat_date || a.created_at).getTime() - new Date(b.stat_date || b.created_at).getTime())
+}
+
 function fmt(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace('.0','') + 'M'
-  if (n >= 1_000)     return (n / 1_000).toFixed(1).replace('.0','') + 'K'
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace('.0', '') + 'M'
+  if (n >= 1_000)     return (n / 1_000).toFixed(1).replace('.0', '') + 'K'
   return n.toString()
 }
 
@@ -42,6 +64,7 @@ interface Props {
 }
 
 export default function DashboardClient({ profile, stats, monthlyStats }: Props) {
+  const [period, setPeriod]       = useState<Period>('tout')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const router   = useRouter()
   const supabase = createClient()
@@ -52,17 +75,39 @@ export default function DashboardClient({ profile, stats, monthlyStats }: Props)
     router.refresh()
   }
 
-  const updatedAt = stats?.updated_at
-    ? new Date(stats.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  // Filtered entries for the chart
+  const filteredEntries = filterByPeriod(monthlyStats, period)
+
+  // Latest entry in the selected period for stat cards
+  const latestEntry = filteredEntries.length > 0
+    ? filteredEntries[filteredEntries.length - 1]
     : null
 
+  // Use latestEntry values if available, else fall back to client_stats
+  const display = {
+    tiktok_views:       latestEntry?.tiktok_views       ?? stats?.tiktok_views       ?? 0,
+    instagram_views:    latestEntry?.instagram_views    ?? stats?.instagram_views    ?? 0,
+    followers_gained:   latestEntry?.followers_gained   ?? stats?.followers_gained   ?? 0,
+    google_maps_clicks: latestEntry?.google_maps_clicks ?? stats?.google_maps_clicks ?? 0,
+    uber_eats_orders:   latestEntry?.uber_eats_orders   ?? stats?.uber_eats_orders   ?? 0,
+    estimated_clients:  latestEntry?.estimated_clients  ?? stats?.estimated_clients  ?? 0,
+    new_clients:        latestEntry?.new_clients        ?? stats?.new_clients_month  ?? 0,
+    custom_message:     latestEntry?.custom_message     ?? stats?.custom_message     ?? '',
+  }
+
+  const updatedAt = latestEntry?.stat_date
+    ? new Date(latestEntry.stat_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : stats?.updated_at
+      ? new Date(stats.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+      : null
+
   const statCards = [
-    { label: 'Vues TikTok',          value: stats?.tiktok_views       ?? 0, icon: '🎵', accent: '#FF2D55' },
-    { label: 'Vues Instagram',        value: stats?.instagram_views    ?? 0, icon: '📸', accent: '#E1306C' },
-    { label: 'Abonnés gagnés',        value: stats?.followers_gained   ?? 0, icon: '👥', accent: '#00E0B8' },
-    { label: 'Clics Google Maps',     value: stats?.google_maps_clicks ?? 0, icon: '📍', accent: '#4285F4' },
-    { label: 'Commandes Uber Eats',   value: stats?.uber_eats_orders   ?? 0, icon: '🛵', accent: '#06C167' },
-    { label: 'Clients estimés',       value: stats?.estimated_clients  ?? 0, icon: '🎯', accent: '#00C2FF' },
+    { label: 'Vues TikTok',        value: display.tiktok_views,       icon: '🎵', accent: '#FF2D55' },
+    { label: 'Vues Instagram',      value: display.instagram_views,    icon: '📸', accent: '#E1306C' },
+    { label: 'Abonnés gagnés',      value: display.followers_gained,   icon: '👥', accent: '#00E0B8' },
+    { label: 'Clics Google Maps',   value: display.google_maps_clicks, icon: '📍', accent: '#4285F4' },
+    { label: 'Commandes Uber Eats', value: display.uber_eats_orders,   icon: '🛵', accent: '#06C167' },
+    { label: 'Clients estimés',     value: display.estimated_clients,  icon: '🎯', accent: '#00C2FF' },
   ]
 
   const SidebarContent = () => (
@@ -70,7 +115,7 @@ export default function DashboardClient({ profile, stats, monthlyStats }: Props)
       {/* Logo */}
       <div className="p-5 border-b" style={{borderColor:'rgba(0,194,255,0.08)'}}>
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-2.5">
             <WaveLogo/>
             <div>
               <div className="font-display font-bold text-sm leading-tight"
@@ -92,7 +137,7 @@ export default function DashboardClient({ profile, stats, monthlyStats }: Props)
         </div>
       </nav>
 
-      {/* User */}
+      {/* User + logout */}
       <div className="p-4" style={{borderTop:'1px solid rgba(0,194,255,0.08)'}}>
         <div className="flex items-center gap-3 mb-3">
           <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-black shrink-0"
@@ -107,7 +152,11 @@ export default function DashboardClient({ profile, stats, monthlyStats }: Props)
         <button onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-xl transition-all duration-200 hover:opacity-80"
           style={{background:'rgba(255,70,70,0.08)',border:'1px solid rgba(255,70,70,0.2)',color:'#ff7070'}}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
           Déconnexion
         </button>
       </div>
@@ -117,13 +166,13 @@ export default function DashboardClient({ profile, stats, monthlyStats }: Props)
   return (
     <div className="min-h-screen bg-[#080C14] flex">
 
-      {/* ── Sidebar desktop ── */}
+      {/* Sidebar desktop */}
       <aside className="hidden lg:flex flex-col w-64 shrink-0 fixed top-0 left-0 h-full"
              style={{background:'#0B0F1A',borderRight:'1px solid rgba(0,194,255,0.09)'}}>
         <SidebarContent/>
       </aside>
 
-      {/* ── Sidebar mobile overlay ── */}
+      {/* Sidebar mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}/>
@@ -136,7 +185,7 @@ export default function DashboardClient({ profile, stats, monthlyStats }: Props)
         </div>
       )}
 
-      {/* ── Main content ── */}
+      {/* Main */}
       <main className="flex-1 lg:ml-64 min-h-screen">
 
         {/* Top bar mobile */}
@@ -163,14 +212,12 @@ export default function DashboardClient({ profile, stats, monthlyStats }: Props)
         <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
 
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 animate-slide-up">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <div>
               <h1 className="font-display font-bold text-xl sm:text-2xl text-white">
                 Bonjour, <span className="gradient-text">{profile?.name?.split(' ')[0]}</span> 👋
               </h1>
-              {updatedAt && (
-                <p className="text-[#8892A4] text-xs sm:text-sm mt-1">Dernière mise à jour : {updatedAt}</p>
-              )}
+              {updatedAt && <p className="text-[#8892A4] text-xs sm:text-sm mt-1">Données du {updatedAt}</p>}
             </div>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full self-start sm:self-auto"
                  style={{background:'rgba(0,224,184,0.07)',border:'1px solid rgba(0,224,184,0.25)'}}>
@@ -179,8 +226,21 @@ export default function DashboardClient({ profile, stats, monthlyStats }: Props)
             </div>
           </div>
 
-          {/* ── Hero bloc nouveaux clients ── */}
-          <div className="rounded-2xl p-5 sm:p-7 mb-5 relative overflow-hidden animate-slide-up"
+          {/* Filtre période */}
+          <div className="flex gap-1.5 flex-wrap mb-6">
+            {PERIODS.map(p => (
+              <button key={p.key} onClick={() => setPeriod(p.key)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                      style={period === p.key
+                        ? {background:'rgba(0,194,255,0.15)',color:'#00C2FF',border:'1px solid rgba(0,194,255,0.4)'}
+                        : {background:'rgba(255,255,255,0.03)',color:'#8892A4',border:'1px solid rgba(255,255,255,0.07)'}}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Hero nouveaux clients */}
+          <div className="rounded-2xl p-5 sm:p-7 mb-5 relative overflow-hidden"
                style={{background:'linear-gradient(145deg,rgba(0,116,217,0.14),rgba(0,224,184,0.06))',border:'1px solid rgba(0,194,255,0.28)',boxShadow:'0 0 60px rgba(0,194,255,0.1)'}}>
             <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full pointer-events-none"
                  style={{background:'radial-gradient(circle, rgba(0,194,255,0.1) 0%, transparent 70%)'}}/>
@@ -188,7 +248,7 @@ export default function DashboardClient({ profile, stats, monthlyStats }: Props)
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-widest text-[#00E0B8] mb-1">Ce mois-ci</div>
                 <div className="font-display font-black text-5xl sm:text-6xl gradient-text leading-none">
-                  +{fmt(stats?.new_clients_month ?? 0)}
+                  +{fmt(display.new_clients)}
                 </div>
                 <div className="text-lg font-semibold text-white mt-1">nouveaux clients</div>
                 <div className="text-[#8892A4] text-sm mt-1">estimés via votre stratégie digitale</div>
@@ -197,21 +257,19 @@ export default function DashboardClient({ profile, stats, monthlyStats }: Props)
             </div>
           </div>
 
-          {/* ── Message agence ── */}
-          {stats?.custom_message && (
-            <div className="rounded-xl p-4 mb-5 flex gap-3 animate-slide-up"
+          {/* Message agence */}
+          {display.custom_message && (
+            <div className="rounded-xl p-4 mb-5 flex gap-3"
                  style={{background:'rgba(0,194,255,0.05)',border:'1px solid rgba(0,194,255,0.18)'}}>
               <span className="text-xl shrink-0">💬</span>
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-[#00C2FF] mb-1">
-                  Message de votre agence
-                </div>
-                <p className="text-white/80 text-sm leading-relaxed">{stats.custom_message}</p>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[#00C2FF] mb-1">Message de votre agence</div>
+                <p className="text-white/80 text-sm leading-relaxed">{display.custom_message}</p>
               </div>
             </div>
           )}
 
-          {/* ── Stat cards ── */}
+          {/* Stat cards */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-5">
             {statCards.map((card, i) => (
               <div key={card.label} style={{animationDelay:`${i * 60}ms`}} className="animate-slide-up">
@@ -220,19 +278,32 @@ export default function DashboardClient({ profile, stats, monthlyStats }: Props)
             ))}
           </div>
 
-          {/* ── Graphique ── */}
-          {monthlyStats.length > 0 && (
-            <div className="rounded-2xl p-5 sm:p-6 animate-slide-up"
+          {/* Graphique */}
+          {filteredEntries.length > 0 && (
+            <div className="rounded-2xl p-5 sm:p-6"
                  style={{background:'#0F1620',border:'1px solid rgba(0,194,255,0.11)'}}>
-              <div className="mb-5">
-                <h2 className="font-display font-bold text-base sm:text-lg text-white">Évolution mensuelle</h2>
-                <p className="text-[#8892A4] text-xs mt-0.5">Vos performances sur les derniers mois</p>
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h2 className="font-display font-bold text-base sm:text-lg text-white">Évolution mensuelle</h2>
+                  <p className="text-[#8892A4] text-xs mt-0.5">
+                    {filteredEntries.length} entrée{filteredEntries.length > 1 ? 's' : ''} sur la période sélectionnée
+                  </p>
+                </div>
               </div>
-              <GrowthChart data={monthlyStats}/>
+              <GrowthChart data={filteredEntries}/>
             </div>
           )}
 
-          {!stats && (
+          {/* Aucune donnée pour la période */}
+          {filteredEntries.length === 0 && monthlyStats.length > 0 && (
+            <div className="text-center py-12 rounded-2xl" style={{background:'#0F1620',border:'1px solid rgba(0,194,255,0.1)'}}>
+              <div className="text-3xl mb-2">📅</div>
+              <p className="font-semibold text-white mb-1">Aucune donnée sur cette période</p>
+              <p className="text-sm text-[#8892A4]">Essayez une période plus longue.</p>
+            </div>
+          )}
+
+          {!stats && monthlyStats.length === 0 && (
             <div className="text-center py-20 text-[#8892A4]">
               <div className="text-4xl mb-3">📊</div>
               <p className="font-semibold text-white mb-1">Données en cours de préparation</p>

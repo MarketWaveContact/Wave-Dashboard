@@ -19,7 +19,7 @@ export default async function AdminPage() {
   if (!profile?.is_admin) redirect('/dashboard')
   const { data: clients } = await admin
     .from('profiles')
-    .select('*, client_stats(*)')
+    .select('*, client_stats(*), monthly_stats(*)')
     .eq('is_admin', false)
     .order('created_at', { ascending: false })
 
