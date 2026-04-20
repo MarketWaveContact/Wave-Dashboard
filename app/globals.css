@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@600;700;800;900&display=swap');
+
+* { box-sizing: border-box; }
+
+body {
+  background: #080C14;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection { background: rgba(0,194,255,0.25); }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #0B0F1A; }
+::-webkit-scrollbar-thumb { background: rgba(0,194,255,0.25); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,194,255,0.45); }
+
+@layer utilities {
+  .gradient-text {
+    background: linear-gradient(135deg, #00C2FF, #00E0B8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .gradient-bg {
+    background: linear-gradient(135deg, #00C2FF, #00E0B8);
+  }
+  .border-wave {
+    border-color: rgba(0,194,255,0.12);
+  }
+  .card-glow {
+    box-shadow: 0 0 0 1px rgba(0,194,255,0.12), 0 4px 24px rgba(0,0,0,0.4);
+  }
+  .hero-glow {
+    box-shadow: 0 0 60px rgba(0,194,255,0.12);
+  }
+}
